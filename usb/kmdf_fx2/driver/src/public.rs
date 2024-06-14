@@ -4,14 +4,14 @@ use wdk_sys::{FILE_READ_ACCESS, FILE_WRITE_ACCESS, METHOD_BUFFERED, METHOD_OUT_D
 // it though.
 
 struct SwitchStateInternal {
-    Switch1: UCHAR,
-    Switch2: UCHAR,
-    Switch3: UCHAR,
-    Switch4: UCHAR,
-    Switch5: UCHAR,
-    Switch6: UCHAR,
-    Switch7: UCHAR,
-    Switch8: UCHAR,
+    switch1: UCHAR,
+    switch2: UCHAR,
+    switch3: UCHAR,
+    switch4: UCHAR,
+    switch5: UCHAR,
+    switch6: UCHAR,
+    switch7: UCHAR,
+    switch8: UCHAR,
 }
 
 enum SwitchState {
@@ -20,14 +20,14 @@ enum SwitchState {
 }
 
 struct BarGraphStateInternal {
-    Bar1: UCHAR,
-    Bar2: UCHAR,
-    Bar3: UCHAR,
-    Bar4: UCHAR,
-    Bar5: UCHAR,
-    Bar6: UCHAR,
-    Bar7: UCHAR,
-    Bar8: UCHAR,
+    bar1: UCHAR,
+    bar2: UCHAR,
+    bar3: UCHAR,
+    bar4: UCHAR,
+    bar5: UCHAR,
+    bar6: UCHAR,
+    bar7: UCHAR,
+    bar8: UCHAR,
 }
 
 enum BarGraphState {
