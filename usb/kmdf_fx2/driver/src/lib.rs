@@ -9,17 +9,13 @@
 #[cfg(not(test))]
 extern crate wdk_panic;
 
+mod public;
 
 #[cfg(not(test))]
 use wdk_alloc::WDKAllocator;
-use wdk_sys::{
-    DRIVER_OBJECT,
-    NTSTATUS,
-    PCUNICODE_STRING,
-};
+use wdk_sys::{DRIVER_OBJECT, NTSTATUS, PCUNICODE_STRING};
 
 extern crate alloc;
-
 
 #[cfg(not(test))]
 #[global_allocator]
