@@ -11,6 +11,7 @@ extern crate wdk_panic;
 
 mod public;
 
+use public::BarGraphState;
 #[cfg(not(test))]
 use wdk_alloc::WDKAllocator;
 use wdk_sys::{DRIVER_OBJECT, NTSTATUS, PCUNICODE_STRING};
@@ -26,8 +27,11 @@ fn main() {}
 #[link_section = "INIT"]
 #[export_name = "DriverEntry"] // WDF expects a symbol with the name DriverEntry
 extern "system" fn driver_entry(
-    driver: &mut DRIVER_OBJECT,
-    registry_path: PCUNICODE_STRING,
+    _driver: &mut DRIVER_OBJECT,
+    _registry_path: PCUNICODE_STRING,
 ) -> NTSTATUS {
-    0
+    let mut value = BarGraphState(2);
+    value.set_bit(true, 2);
+    // value.get_bit::<9>(); Does not compile
+    i32::from(value.0)
 }

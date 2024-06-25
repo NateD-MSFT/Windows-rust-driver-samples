@@ -3,36 +3,46 @@ use wdk_sys::{FILE_READ_ACCESS, FILE_WRITE_ACCESS, METHOD_BUFFERED, METHOD_OUT_D
 // TODO: I could do a macro to reduce code duplication here.  Probably not worth
 // it though.
 
-struct SwitchStateInternal {
-    switch1: UCHAR,
-    switch2: UCHAR,
-    switch3: UCHAR,
-    switch4: UCHAR,
-    switch5: UCHAR,
-    switch6: UCHAR,
-    switch7: UCHAR,
-    switch8: UCHAR,
+struct SwitchState(UCHAR);
+
+impl SwitchState {
+    fn set_bit(&mut self, toggle: bool, index: u8) {
+        match toggle {
+            true => self.0 |= 1 << index,
+            false => {
+                let mask = !(1 << index);
+                self.0 &= mask
+            }
+        }
+    }
+
+    const fn get_bit(&self, index: u8) -> bool {
+        assert!(index < 7 && index >= 0);
+        (self.0 & (1u8 << index)) > 0
+    }
 }
 
-enum SwitchState {
-    IndividualSwitches(SwitchStateInternal),
-    AllSwitches(UCHAR),
-}
+pub struct BarGraphState(pub UCHAR);
 
-struct BarGraphStateInternal {
-    bar1: UCHAR,
-    bar2: UCHAR,
-    bar3: UCHAR,
-    bar4: UCHAR,
-    bar5: UCHAR,
-    bar6: UCHAR,
-    bar7: UCHAR,
-    bar8: UCHAR,
-}
+#[allow(dead_code)]
+impl BarGraphState {
+    #[inline(never)]
+    pub fn set_bit(&mut self, toggle: bool, index: u8) {
+        match toggle {
+            true => self.0 |= 1 << index,
+            false => {
+                let mask = !(1 << index);
+                self.0 &= mask
+            }
+        }
+    }
 
-enum BarGraphState {
-    IndividualBars(BarGraphStateInternal),
-    AllBars(UCHAR),
+    pub const fn get_bit<const index : u8>(&self) -> bool {
+        const {
+            assert!(index < 7 && index >= 0);
+        }
+        (self.0 & (1u8 << index)) > 0
+    }
 }
 
 const fn ctl_code(device_type: u32, function: u32, method: u32, access: u32) -> u32 {
