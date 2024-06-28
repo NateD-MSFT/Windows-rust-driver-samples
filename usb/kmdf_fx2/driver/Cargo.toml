@@ -17,6 +17,11 @@ wdk-alloc.workspace = true
 wdk-panic.workspace = true
 wdk-sys.workspace = true
 paste = "1.0.14"
+win_etw_macros = { path = "../../../../rust_win_etw/win_etw_macros" }
+win_etw_provider = { path = "../../../../rust_win_etw/win_etw_provider", default-features = false, features = [
+    "no_std",
+] }
+once_cell = { version = "*", default-features = false, features = ["race"] }
 
 [build-dependencies]
 wdk-build.workspace = true

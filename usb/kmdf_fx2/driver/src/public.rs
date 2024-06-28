@@ -1,12 +1,27 @@
 use wdk_sys::{FILE_READ_ACCESS, FILE_WRITE_ACCESS, METHOD_BUFFERED, METHOD_OUT_DIRECT, UCHAR};
+use win_etw_macros::trace_logging_provider;
+
+#[trace_logging_provider(name = "OSRUSBFX2", guid = "D23A0C5A-D307-4f0e-AE8E-E2A355AD5DAB")]
+pub trait OsrUsbFxLogger {
+    pub fn send_string(arg: &str);
+}
 
 // TODO: I could do a macro to reduce code duplication here.  Probably not worth
 // it though.
 
+enum OsrUSBFxError {
+    BitAccessError,
+}
+
 struct SwitchState(UCHAR);
 
 impl SwitchState {
-    fn set_bit(&mut self, toggle: bool, index: u8) {
+    /// Sets the bit at ``index`` for this [`SwitchState`].
+    /// Must be in the range [0..7], or a compilation failure will occur.
+    fn set_bit<const index: u8>(&mut self, toggle: bool) {
+        const {
+            assert!(index < 7);
+        }
         match toggle {
             true => self.0 |= 1 << index,
             false => {
@@ -16,9 +31,26 @@ impl SwitchState {
         }
     }
 
-    const fn get_bit(&self, index: u8) -> bool {
-        assert!(index < 7 && index >= 0);
+    /// Gets the bit at ``index`` for this [`SwitchState`].
+    /// Must be in the range [0..7], or a compilation failure will occur.
+    const fn get_bit_const<const index: u8>(&self) -> bool {
+        const {
+            assert!(index < 7);
+        }
         (self.0 & (1u8 << index)) > 0
+    }
+
+    /// Get the bit at ``index``for this [`SwitchState`].
+    ///
+    /// Errors:
+    ///
+    /// If ``index`` falls outside of the range [0..7], returns an
+    /// [`OsrUSBFxError::BitAccessError`].
+    fn get_bit(&self, index: u8) -> Result<bool, OsrUSBFxError> {
+        match index {
+            0..=7 => Ok((self.0 & (1u8 << index)) > 0),
+            _ => Err(OsrUSBFxError::BitAccessError),
+        }
     }
 }
 
@@ -26,8 +58,10 @@ pub struct BarGraphState(pub UCHAR);
 
 #[allow(dead_code)]
 impl BarGraphState {
-    #[inline(never)]
-    pub fn set_bit(&mut self, toggle: bool, index: u8) {
+    pub fn set_bit<const index: u8>(&mut self, toggle: bool) {
+        const {
+            assert!(index < 7);
+        }
         match toggle {
             true => self.0 |= 1 << index,
             false => {
@@ -37,9 +71,9 @@ impl BarGraphState {
         }
     }
 
-    pub const fn get_bit<const index : u8>(&self) -> bool {
+    pub const fn get_bit<const index: u8>(&self) -> bool {
         const {
-            assert!(index < 7 && index >= 0);
+            assert!(index < 7);
         }
         (self.0 & (1u8 << index)) > 0
     }
