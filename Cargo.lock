@@ -301,6 +301,7 @@ checksum = "b1a46d1a171d865aa5f83f92695765caa047a9b4cbae2cbf37dbd613a793fd4c"
 name = "kmdf_fx2"
 version = "0.1.0"
 dependencies = [
+ "lazy_static",
  "once_cell",
  "paste",
  "wdk",
@@ -308,6 +309,7 @@ dependencies = [
  "wdk-build",
  "wdk-panic",
  "wdk-sys",
+ "widestring",
  "win_etw_macros",
  "win_etw_provider",
 ]

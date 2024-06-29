@@ -1,10 +1,4 @@
-use wdk_sys::{FILE_READ_ACCESS, FILE_WRITE_ACCESS, METHOD_BUFFERED, METHOD_OUT_DIRECT, UCHAR};
-use win_etw_macros::trace_logging_provider;
-
-#[trace_logging_provider(name = "OSRUSBFX2", guid = "D23A0C5A-D307-4f0e-AE8E-E2A355AD5DAB")]
-pub trait OsrUsbFxLogger {
-    pub fn send_string(arg: &str);
-}
+use wdk_sys::{FILE_READ_ACCESS, FILE_WRITE_ACCESS, LPGUID, METHOD_BUFFERED, METHOD_OUT_DIRECT, NTSTATUS, PIRP, PVOID, UCHAR};
 
 // TODO: I could do a macro to reduce code duplication here.  Probably not worth
 // it though.

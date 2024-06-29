@@ -43,7 +43,8 @@ pub mod util {
     pub fn wdf_object_attributes_init(attributes: PWDF_OBJECT_ATTRIBUTES) -> Result<(), WDFError> {
         if let Ok(attribute_size) = u32::try_from(core::mem::size_of::<WDF_OBJECT_ATTRIBUTES>()) {
             // Safety:
-            // All zeroes is a valid representation for a WDF_OBJECT_ATTRIBUTES structure.
+            // All zeroes is a valid representation for a WDF_OBJECT_ATTRIBUTES structure,
+            // and we immediately fill the structure's fields.
             unsafe {
                 (*attributes) = core::mem::zeroed::<WDF_OBJECT_ATTRIBUTES>();
                 (*attributes).Size = attribute_size;

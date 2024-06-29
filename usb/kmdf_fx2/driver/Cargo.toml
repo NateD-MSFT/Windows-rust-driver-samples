@@ -21,7 +21,9 @@ win_etw_macros = { path = "../../../../rust_win_etw/win_etw_macros" }
 win_etw_provider = { path = "../../../../rust_win_etw/win_etw_provider", default-features = false, features = [
     "no_std",
 ] }
+widestring = { version = "*", default-features = false, features = ["alloc"]}
 once_cell = { version = "*", default-features = false, features = ["race"] }
+lazy_static = { version = "*", default-features = false, features = ["spin_no_std"]}
 
 [build-dependencies]
 wdk-build.workspace = true

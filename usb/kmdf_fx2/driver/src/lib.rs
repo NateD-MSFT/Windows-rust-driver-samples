@@ -10,26 +10,38 @@
 extern crate wdk_panic;
 
 mod public;
+mod trace;
 mod wdf;
 
-use once_cell::race::Lazy;
-use public::{BarGraphState, OsrUsbFxLogger};
+use core::{borrow::BorrowMut, mem::size_of, ptr::null};
+
+use lazy_static::lazy_static;
+use public::BarGraphState;
+use trace::OsrUsbFxLogger;
+use wdk::nt_success;
 #[cfg(not(test))]
 use wdk_alloc::WDKAllocator;
-use alloc::boxed::Box;
 use wdk_sys::{
+    ntddk::{MmGetSystemRoutineAddress, RtlInitUnicodeString},
     DRIVER_OBJECT,
+    LPGUID,
     NTSTATUS,
     PCUNICODE_STRING,
+    PCWSTR,
     PFN_WDF_DRIVER_DEVICE_ADD,
+    PIRP,
     PUNICODE_STRING,
+    PVOID,
     PWDFDEVICE_INIT,
     PWDF_DRIVER_CONFIG,
     PWDF_OBJECT_ATTRIBUTES,
     UNICODE_STRING,
+    WCHAR,
     WDFDRIVER,
     WDF_DRIVER_CONFIG,
 };
+use widestring::WideCString;
+use win_etw_provider::EventOptions;
 
 extern crate alloc;
 
@@ -37,7 +49,44 @@ extern crate alloc;
 #[global_allocator]
 static GLOBAL_ALLOCATOR: WDKAllocator = WDKAllocator;
 
-static EVENT_LOGGER : Lazy<OsrUsbFxLogger> = Lazy::new(||OsrUsbFxLogger::new());
+lazy_static! {
+    static ref EVENT_LOGGER: OsrUsbFxLogger = OsrUsbFxLogger::new();
+}
+type FnIoGetActivityIdIrp = unsafe extern "C" fn(PIRP, LPGUID) -> NTSTATUS;
+lazy_static! {
+    static ref IO_GET_ACTIVITY_ID_IRP: Option<FnIoGetActivityIdIrp> =
+        get_system_routine_address_from_str::<FnIoGetActivityIdIrp>("IoGetActivityIdIrp");
+}
+
+/// Looks up a system routine address for a routine with signature `T`.
+///
+/// Attempting to call with T not a pointer type will result in a compilation
+/// failure.
+fn get_system_routine_address_from_str<T>(routine_name: &str) -> Option<T>
+where
+    T: Clone,
+{
+    // First, assert that we are casting from a pointer-sized type.
+    const { assert!(size_of::<T>() == size_of::<PVOID>()) };
+    let mut result: Option<T> = None;
+    let mut io_get_string = UNICODE_STRING::default();
+    if let Ok(io_get_activity_string) = widestring::WideCString::from_str(routine_name) {
+        // SAFETY: If we get this far, we have a valid wide string for the function name
+        // we're looking for, as well as a valid UNICODE_STRING to store the
+        // results in.
+        unsafe {
+            RtlInitUnicodeString(io_get_string.borrow_mut(), io_get_activity_string.as_ptr());
+            let function_address = MmGetSystemRoutineAddress(io_get_string.borrow_mut());
+
+            if !PVOID::is_null(function_address) {
+                // SAFETY: We asserted at the top that we are passing in a pointer the size of
+                // PVOID.  We use transmute_copy because transmute cannot work on generic types.
+                result = Some(core::mem::transmute_copy::<PVOID, T>(&function_address))
+            }
+        }
+    }
+    result.clone()
+}
 
 fn main() {}
 
@@ -47,10 +96,20 @@ extern "system" fn driver_entry(
     _driver: &mut DRIVER_OBJECT,
     _registry_path: PCUNICODE_STRING,
 ) -> NTSTATUS {
-    let mut func_name: UNICODE_STRING = Default::default();
+    EVENT_LOGGER.send_string(
+        None,
+        "OSRUSBFX2 Driver Sample - Driver Framework Edition.\n",
+    );
+    EVENT_LOGGER.send_string(
+        Some(&EventOptions {
+            level: Some(win_etw_provider::Level::INFO),
+            activity_id: Default::default(),
+            related_activity_id: Default::default(),
+        }),
+        "OSRUSBFX2 Driver Sample - Driver Framework Edition.\n",
+    );
 
     let bar = BarGraphState(0);
-    bar.get_bit::<9>();
 
     // TODO: how to get the func name call into global-ish state?
 
