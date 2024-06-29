@@ -54,15 +54,26 @@ lazy_static! {
 }
 type FnIoGetActivityIdIrp = unsafe extern "C" fn(PIRP, LPGUID) -> NTSTATUS;
 lazy_static! {
-    static ref IO_GET_ACTIVITY_ID_IRP: Option<FnIoGetActivityIdIrp> =
-        get_system_routine_address_from_str::<FnIoGetActivityIdIrp>("IoGetActivityIdIrp");
+    static ref IO_GET_ACTIVITY_ID_IRP: Option<FnIoGetActivityIdIrp> = unsafe {
+        // Safety: IoGetActivityIdIrp has the appropriate signature.
+        get_system_routine_address_from_str::<FnIoGetActivityIdIrp>("IoGetActivityIdIrp")
+    };
 }
 
-/// Looks up a system routine address for a routine with signature `T`.
+/// Looks up a system routine address for a function with signature `T`.  
 ///
-/// Attempting to call with T not a pointer type will result in a compilation
+/// Attempting to call with `T` not a pointer type will result in a compilation
 /// failure.
-fn get_system_routine_address_from_str<T>(routine_name: &str) -> Option<T>
+/// 
+/// Returns None if no system routine of that name can be found.
+///
+/// Safety:
+///
+/// The caller must provide the appropriate function signature as `T` for the
+/// system routine they intend to use.  Providing the wrong signature will
+/// result in returning a function pointer with the wrong signature, leading to
+/// undefined behavior if used.
+unsafe fn get_system_routine_address_from_str<T>(routine_name: &str) -> Option<T>
 where
     T: Clone,
 {
@@ -81,6 +92,8 @@ where
             if !PVOID::is_null(function_address) {
                 // SAFETY: We asserted at the top that we are passing in a pointer the size of
                 // PVOID.  We use transmute_copy because transmute cannot work on generic types.
+                // It is the user's responsibility to ensure they are using the correct function
+                // signature.
                 result = Some(core::mem::transmute_copy::<PVOID, T>(&function_address))
             }
         }
