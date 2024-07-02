@@ -302,7 +302,6 @@ name = "kmdf_fx2"
 version = "0.1.0"
 dependencies = [
  "lazy_static",
- "once_cell",
  "paste",
  "wdk",
  "wdk-alloc",

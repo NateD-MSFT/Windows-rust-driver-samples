@@ -13,6 +13,7 @@ mod public;
 mod trace;
 mod wdf;
 
+use alloc::format;
 use core::{borrow::BorrowMut, mem::size_of, ptr::null};
 
 use lazy_static::lazy_static;
@@ -22,12 +23,15 @@ use wdk::nt_success;
 #[cfg(not(test))]
 use wdk_alloc::WDKAllocator;
 use wdk_sys::{
-    ntddk::{MmGetSystemRoutineAddress, RtlInitUnicodeString},
+    macros,
+    ntddk::{IoGetActivityIdIrp, MmGetSystemRoutineAddress, RtlInitUnicodeString},
+    BOOLEAN,
     DRIVER_OBJECT,
     LPGUID,
     NTSTATUS,
     PCUNICODE_STRING,
     PCWSTR,
+    PDRIVER_OBJECT,
     PFN_WDF_DRIVER_DEVICE_ADD,
     PIRP,
     PUNICODE_STRING,
@@ -38,7 +42,10 @@ use wdk_sys::{
     UNICODE_STRING,
     WCHAR,
     WDFDRIVER,
+    WDFOBJECT,
     WDF_DRIVER_CONFIG,
+    WDF_NO_HANDLE,
+    WDF_NO_OBJECT_ATTRIBUTES,
 };
 use widestring::WideCString;
 use win_etw_provider::EventOptions;
@@ -59,12 +66,20 @@ lazy_static! {
         get_system_routine_address_from_str::<FnIoGetActivityIdIrp>("IoGetActivityIdIrp")
     };
 }
+type FnIoSetDeviceInterfacePropertyData =
+    unsafe extern "C" fn(PUNICODE_STRING, BOOLEAN) -> NTSTATUS;
+lazy_static! {
+    static ref IO_SET_DEVICE_INTERFACE_PROPERTY_DATA: Option<FnIoSetDeviceInterfacePropertyData> = unsafe {
+        // Safety: IoSetDeviceInterfacePropertyData has the appropriate signature.
+        get_system_routine_address_from_str::<FnIoSetDeviceInterfacePropertyData>("IoSetDeviceInterfacePropertyData")
+    };
+}
 
 /// Looks up a system routine address for a function with signature `T`.  
 ///
 /// Attempting to call with `T` not a pointer type will result in a compilation
 /// failure.
-/// 
+///
 /// Returns None if no system routine of that name can be found.
 ///
 /// Safety:
@@ -106,13 +121,9 @@ fn main() {}
 #[link_section = "INIT"]
 #[export_name = "DriverEntry"] // WDF expects a symbol with the name DriverEntry
 extern "system" fn driver_entry(
-    _driver: &mut DRIVER_OBJECT,
-    _registry_path: PCUNICODE_STRING,
+    driver: &mut DRIVER_OBJECT,
+    registry_path: PCUNICODE_STRING,
 ) -> NTSTATUS {
-    EVENT_LOGGER.send_string(
-        None,
-        "OSRUSBFX2 Driver Sample - Driver Framework Edition.\n",
-    );
     EVENT_LOGGER.send_string(
         Some(&EventOptions {
             level: Some(win_etw_provider::Level::INFO),
@@ -122,10 +133,6 @@ extern "system" fn driver_entry(
         "OSRUSBFX2 Driver Sample - Driver Framework Edition.\n",
     );
 
-    let bar = BarGraphState(0);
-
-    // TODO: how to get the func name call into global-ish state?
-
     let wdf_config: PWDF_DRIVER_CONFIG = &mut Default::default();
     let wdf_attributes: PWDF_OBJECT_ATTRIBUTES = &mut Default::default();
     let device_add: PFN_WDF_DRIVER_DEVICE_ADD = Some(osr_fx_evt_device_add);
@@ -134,6 +141,33 @@ extern "system" fn driver_entry(
         Ok(_) => 0,
         Err(_) => todo!(),
     };
+    unsafe {
+        // Safety: This is a direct assignment to an initialized structure which
+        // is not shared with any other threads or references.
+        (*wdf_attributes).EvtCleanupCallback = Some(osr_fx_evt_driver_context_cleanup);
+    }
+    let status = unsafe {
+        macros::call_unsafe_wdf_function_binding!(
+            WdfDriverCreate,
+            driver as PDRIVER_OBJECT,
+            registry_path,
+            wdf_attributes,
+            wdf_config,
+            WDF_NO_HANDLE as *mut WDFDRIVER
+        )
+    };
+
+    if !nt_success(status) {
+        EVENT_LOGGER.send_string(
+            Some(&EventOptions {
+                level: Some(win_etw_provider::Level::ERROR),
+                activity_id: Default::default(),
+                related_activity_id: Default::default(),
+            }),
+            format!("WdfDriverCreate failed with status 0x{status}.\n").as_str(),
+        );
+    }
+
     status
 }
 
@@ -143,4 +177,14 @@ unsafe extern "C" fn osr_fx_evt_device_add(
     device_init: PWDFDEVICE_INIT,
 ) -> NTSTATUS {
     0
+}
+
+#[link_section = "PAGE"]
+unsafe extern "C" fn osr_fx_evt_driver_context_cleanup(driver: WDFOBJECT) {}
+
+#[test]
+fn static_function_test() {
+    let my_addr = IO_GET_ACTIVITY_ID_IRP.clone();
+    assert!(my_addr != None);
+    assert!(my_addr.unwrap() as *const () == IoGetActivityIdIrp as *const ());
 }
