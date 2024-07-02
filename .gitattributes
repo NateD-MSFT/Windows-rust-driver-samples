@@ -4,3 +4,7 @@
 *.rs       text diff=rust
 *.toml     text diff=toml
 Cargo.lock text
+
+# Declare files that are encoded in UTF-16
+*.inf          text diff working-tree-encoding=UTF-16LE-BOM eol=crlf
+*.inx          text diff working-tree-encoding=UTF-16LE-BOM eol=crlf
