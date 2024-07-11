@@ -17,8 +17,8 @@ wdk-alloc.workspace = true
 wdk-panic.workspace = true
 wdk-sys.workspace = true
 paste = "1.0.14"
-win_etw_macros = "^0.1.9"
-win_etw_provider = { version = "^0.1.10" }
+win_etw_macros = { path =  "../../../../rust_win_etw/win_etw_macros", default-features = false, features = ["windows_drivers"]}
+win_etw_provider = { path = "../../../../rust_win_etw/win_etw_provider",default-features = false, features = ["windows_drivers"]}
 widestring = { version = "*", default-features = false, features = ["alloc"]}
 lazy_static = { version = "*", default-features = false, features = ["spin_no_std"]}
 

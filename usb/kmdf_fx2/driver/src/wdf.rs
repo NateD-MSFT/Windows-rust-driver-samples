@@ -30,6 +30,8 @@ pub mod util {
         // All zeroes is a valid representation for a WDF_DRIVER_CONFIG structure.
         unsafe {
             (*config) = core::mem::zeroed::<WDF_DRIVER_CONFIG>();
+            (*config).Size = u32::try_from(core::mem::size_of::<WDF_DRIVER_CONFIG>())
+                .expect("Size of WDF_DRIVER_CONFIG was more than u32 capacity!");
             (*config).EvtDriverDeviceAdd = device_add;
         };
     }

@@ -39,6 +39,7 @@ use wdk_sys::{
     PWDFDEVICE_INIT,
     PWDF_DRIVER_CONFIG,
     PWDF_OBJECT_ATTRIBUTES,
+    STATUS_SUCCESS,
     UNICODE_STRING,
     WCHAR,
     WDFDRIVER,
@@ -55,9 +56,8 @@ extern crate alloc;
 #[cfg(not(test))]
 #[global_allocator]
 static GLOBAL_ALLOCATOR: WDKAllocator = WDKAllocator;
-
 lazy_static! {
-    static ref EVENT_LOGGER: OsrUsbFxLogger = OsrUsbFxLogger::new();
+    static ref EVENT_LOGGER: OsrUsbFxLogger = { OsrUsbFxLogger::new() };
 }
 type FnIoGetActivityIdIrp = unsafe extern "C" fn(PIRP, LPGUID) -> NTSTATUS;
 lazy_static! {
@@ -119,6 +119,7 @@ where
 fn main() {}
 
 #[link_section = "INIT"]
+#[inline(never)]
 #[export_name = "DriverEntry"] // WDF expects a symbol with the name DriverEntry
 extern "system" fn driver_entry(
     driver: &mut DRIVER_OBJECT,
@@ -138,7 +139,7 @@ extern "system" fn driver_entry(
     let device_add: PFN_WDF_DRIVER_DEVICE_ADD = Some(osr_fx_evt_device_add);
     wdf::util::wdf_driver_config_init(wdf_config, device_add);
     let status = match (wdf::util::wdf_object_attributes_init(wdf_attributes)) {
-        Ok(_) => 0,
+        Ok(_) => STATUS_SUCCESS,
         Err(_) => todo!(),
     };
     unsafe {
@@ -180,11 +181,13 @@ unsafe extern "C" fn osr_fx_evt_device_add(
 }
 
 #[link_section = "PAGE"]
-unsafe extern "C" fn osr_fx_evt_driver_context_cleanup(driver: WDFOBJECT) {}
-
-#[test]
-fn static_function_test() {
-    let my_addr = IO_GET_ACTIVITY_ID_IRP.clone();
-    assert!(my_addr != None);
-    assert!(my_addr.unwrap() as *const () == IoGetActivityIdIrp as *const ());
+unsafe extern "C" fn osr_fx_evt_driver_context_cleanup(driver: WDFOBJECT) {
+    EVENT_LOGGER.send_string(
+        Some(&EventOptions {
+            level: Some(win_etw_provider::Level::INFO),
+            activity_id: Default::default(),
+            related_activity_id: Default::default(),
+        }),
+        "--> OsrFxEvtDriverContextCleanup\n",
+    );
 }
