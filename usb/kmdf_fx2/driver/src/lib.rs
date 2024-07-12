@@ -39,14 +39,20 @@ use wdk_sys::{
     PWDFDEVICE_INIT,
     PWDF_DRIVER_CONFIG,
     PWDF_OBJECT_ATTRIBUTES,
+    PWDF_PNPPOWER_EVENT_CALLBACKS,
     STATUS_SUCCESS,
     UNICODE_STRING,
     WCHAR,
+    WDFCMRESLIST,
+    WDFDEVICE,
     WDFDRIVER,
     WDFOBJECT,
     WDF_DRIVER_CONFIG,
     WDF_NO_HANDLE,
     WDF_NO_OBJECT_ATTRIBUTES,
+    WDF_PNPPOWER_EVENT_CALLBACKS,
+    WDF_POWER_DEVICE_STATE,
+    _WDF_DEVICE_IO_TYPE,
 };
 use widestring::WideCString;
 use win_etw_provider::EventOptions;
@@ -174,10 +180,46 @@ extern "system" fn driver_entry(
 
 #[link_section = "PAGE"]
 unsafe extern "C" fn osr_fx_evt_device_add(
-    _driver: WDFDRIVER,
+    driver: WDFDRIVER,
     device_init: PWDFDEVICE_INIT,
 ) -> NTSTATUS {
-    0
+    EVENT_LOGGER.send_string(
+        Some(&EventOptions {
+            level: Some(win_etw_provider::Level::INFO),
+            activity_id: Default::default(),
+            related_activity_id: Default::default(),
+        }),
+        "--> OsrFxEvtDeviceAdd routine\n",
+    );
+
+    // Initialize the pnpPowerCallbacks structure.  Callback events for PNP
+    // and Power are specified here.  If you don't supply any callbacks,
+    // the Framework will take appropriate default actions based on whether
+    // DeviceInit is initialized to be an FDO, a PDO or a filter device
+    // object.
+    //
+
+    let mut pnp_power_callbacks = &mut WDF_PNPPOWER_EVENT_CALLBACKS {
+        Size: core::mem::size_of::<WDF_PNPPOWER_EVENT_CALLBACKS>() as u32,
+        EvtDeviceD0Entry: Some(OsrFxEvtDeviceD0Entry),
+        EvtDevicePrepareHardware: Some(OsrFxEvtDevicePrepareHardware),
+        EvtDeviceD0Exit: Some(OsrFxEvtDeviceD0Exit),
+        ..Default::default()
+    };
+
+    macros::call_unsafe_wdf_function_binding!(
+        WdfDeviceInitSetPnpPowerEventCallbacks,
+        device_init,
+        pnp_power_callbacks
+    );
+
+    macros::call_unsafe_wdf_function_binding!(
+        WdfDeviceInitSetIoType,
+        device_init,
+        _WDF_DEVICE_IO_TYPE::WdfDeviceIoBuffered
+    );
+
+    STATUS_SUCCESS
 }
 
 #[link_section = "PAGE"]
@@ -191,3 +233,27 @@ unsafe extern "C" fn osr_fx_evt_driver_context_cleanup(driver: WDFOBJECT) {
         "--> OsrFxEvtDriverContextCleanup\n",
     );
 }
+
+unsafe extern "C" fn OsrFxEvtDevicePrepareHardware(
+    Device: WDFDEVICE,
+    ResourceList: WDFCMRESLIST,
+    ResourceListTranslated: WDFCMRESLIST,
+) -> NTSTATUS {
+    STATUS_SUCCESS
+}
+
+unsafe extern "C" fn OsrFxEvtDeviceD0Entry(
+    Device: WDFDEVICE,
+    PreviousState: WDF_POWER_DEVICE_STATE,
+) -> NTSTATUS {
+    STATUS_SUCCESS
+}
+
+unsafe extern "C" fn OsrFxEvtDeviceD0Exit(
+    Device: WDFDEVICE,
+    TargetState: WDF_POWER_DEVICE_STATE,
+) -> NTSTATUS {
+    STATUS_SUCCESS
+}
+
+unsafe extern "C" fn OsrFxEvtDeviceSelfManagedIoFlush(Device: WDFDEVICE) {}
