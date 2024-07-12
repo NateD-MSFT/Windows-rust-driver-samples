@@ -14,23 +14,21 @@ mod trace;
 mod wdf;
 
 use alloc::format;
-use core::{borrow::BorrowMut, mem::size_of, ptr::null};
+use core::{borrow::BorrowMut, mem::size_of};
 
 use lazy_static::lazy_static;
-use public::BarGraphState;
 use trace::OsrUsbFxLogger;
 use wdk::nt_success;
 #[cfg(not(test))]
 use wdk_alloc::WDKAllocator;
 use wdk_sys::{
     macros,
-    ntddk::{IoGetActivityIdIrp, MmGetSystemRoutineAddress, RtlInitUnicodeString},
+    ntddk::{MmGetSystemRoutineAddress, RtlInitUnicodeString},
     BOOLEAN,
     DRIVER_OBJECT,
     LPGUID,
     NTSTATUS,
     PCUNICODE_STRING,
-    PCWSTR,
     PDRIVER_OBJECT,
     PFN_WDF_DRIVER_DEVICE_ADD,
     PIRP,
@@ -39,22 +37,17 @@ use wdk_sys::{
     PWDFDEVICE_INIT,
     PWDF_DRIVER_CONFIG,
     PWDF_OBJECT_ATTRIBUTES,
-    PWDF_PNPPOWER_EVENT_CALLBACKS,
     STATUS_SUCCESS,
     UNICODE_STRING,
-    WCHAR,
     WDFCMRESLIST,
     WDFDEVICE,
     WDFDRIVER,
     WDFOBJECT,
-    WDF_DRIVER_CONFIG,
     WDF_NO_HANDLE,
-    WDF_NO_OBJECT_ATTRIBUTES,
     WDF_PNPPOWER_EVENT_CALLBACKS,
     WDF_POWER_DEVICE_STATE,
     _WDF_DEVICE_IO_TYPE,
 };
-use widestring::WideCString;
 use win_etw_provider::EventOptions;
 
 extern crate alloc;
@@ -63,7 +56,7 @@ extern crate alloc;
 #[global_allocator]
 static GLOBAL_ALLOCATOR: WDKAllocator = WDKAllocator;
 lazy_static! {
-    static ref EVENT_LOGGER: OsrUsbFxLogger = { OsrUsbFxLogger::new() };
+    static ref EVENT_LOGGER: OsrUsbFxLogger = OsrUsbFxLogger::new();
 }
 type FnIoGetActivityIdIrp = unsafe extern "C" fn(PIRP, LPGUID) -> NTSTATUS;
 lazy_static! {
@@ -144,7 +137,7 @@ extern "system" fn driver_entry(
     let wdf_attributes: PWDF_OBJECT_ATTRIBUTES = &mut Default::default();
     let device_add: PFN_WDF_DRIVER_DEVICE_ADD = Some(osr_fx_evt_device_add);
     wdf::util::wdf_driver_config_init(wdf_config, device_add);
-    let status = match (wdf::util::wdf_object_attributes_init(wdf_attributes)) {
+    let status = match wdf::util::wdf_object_attributes_init(wdf_attributes) {
         Ok(_) => STATUS_SUCCESS,
         Err(_) => todo!(),
     };
@@ -199,7 +192,7 @@ unsafe extern "C" fn osr_fx_evt_device_add(
     // object.
     //
 
-    let mut pnp_power_callbacks = &mut WDF_PNPPOWER_EVENT_CALLBACKS {
+    let pnp_power_callbacks = &mut WDF_PNPPOWER_EVENT_CALLBACKS {
         Size: core::mem::size_of::<WDF_PNPPOWER_EVENT_CALLBACKS>() as u32,
         EvtDeviceD0Entry: Some(OsrFxEvtDeviceD0Entry),
         EvtDevicePrepareHardware: Some(OsrFxEvtDevicePrepareHardware),

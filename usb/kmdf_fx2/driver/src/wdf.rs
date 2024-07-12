@@ -2,15 +2,11 @@
 /// To eventually be merged into/replaced by windows-drivers-rs.
 pub mod util {
     use wdk_sys::{
-        NTSTATUS,
         PFN_WDF_DRIVER_DEVICE_ADD,
-        PWDFDEVICE_INIT,
         PWDF_DRIVER_CONFIG,
         PWDF_OBJECT_ATTRIBUTES,
-        WDFDRIVER,
         WDF_DRIVER_CONFIG,
         WDF_OBJECT_ATTRIBUTES,
-        _WDF_DRIVER_CONFIG,
         _WDF_EXECUTION_LEVEL::WdfExecutionLevelInheritFromParent,
         _WDF_SYNCHRONIZATION_SCOPE::WdfSynchronizationScopeInheritFromParent,
     };

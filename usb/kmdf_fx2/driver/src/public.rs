@@ -1,12 +1,8 @@
 use wdk_sys::{
     FILE_READ_ACCESS,
     FILE_WRITE_ACCESS,
-    LPGUID,
     METHOD_BUFFERED,
     METHOD_OUT_DIRECT,
-    NTSTATUS,
-    PIRP,
-    PVOID,
     UCHAR,
 };
 
