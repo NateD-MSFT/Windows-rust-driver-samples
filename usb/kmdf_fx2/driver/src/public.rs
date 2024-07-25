@@ -1,10 +1,4 @@
-use wdk_sys::{
-    FILE_READ_ACCESS,
-    FILE_WRITE_ACCESS,
-    METHOD_BUFFERED,
-    METHOD_OUT_DIRECT,
-    UCHAR,
-};
+use wdk_sys::{FILE_READ_ACCESS, FILE_WRITE_ACCESS, METHOD_BUFFERED, METHOD_OUT_DIRECT, UCHAR};
 
 // TODO: I could do a macro to reduce code duplication here.  Probably not worth
 // it though.

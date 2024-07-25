@@ -46,7 +46,7 @@ pub fn device_to_activity_id(device: &WDFDEVICE) -> GUID {
 
 #[repr(C)]
 pub struct _DEVICE_CONTEXT {
-   UsbDevice: WDFUSBDEVICE,
+    UsbDevice: WDFUSBDEVICE,
 
     UsbInterface: WDFUSBINTERFACE,
     BulkReadPipe: WDFUSBPIPE,

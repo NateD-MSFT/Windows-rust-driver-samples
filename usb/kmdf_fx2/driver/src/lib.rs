@@ -279,13 +279,11 @@ unsafe extern "C" fn osr_fx_evt_device_add(
         macros::call_unsafe_wdf_function_binding!(WdfDeviceSetPnpCapabilities, device, &mut caps);
     }
 
-    //
     // Create a parallel default queue and register an event callback to
     // receive ioctl requests. We will create separate queues for
     // handling read and write requests. All other requests will be
     // completed with error status automatically by the framework.
     //
-
 
     trace_events!(
         "<-- OsrFxEvtDeviceAdd routine\n",

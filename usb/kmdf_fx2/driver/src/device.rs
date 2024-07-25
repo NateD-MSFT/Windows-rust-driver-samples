@@ -2,11 +2,22 @@ use core::ptr::{null, null_mut};
 
 use wdk::{nt_success, paged_code};
 use wdk_sys::{
-    macros, ntddk::KeGetCurrentIrql, APC_LEVEL, DEVICE_REGISTRY_PROPERTY::{
+    macros,
+    ntddk::KeGetCurrentIrql,
+    APC_LEVEL,
+    DEVICE_REGISTRY_PROPERTY::{
         DevicePropertyDeviceDescription,
         DevicePropertyFriendlyName,
         DevicePropertyLocationInformation,
-    }, PVOID, STATUS_SUCCESS, WDFDEVICE, WDFMEMORY, WDFOBJECT, WDF_NO_OBJECT_ATTRIBUTES, WDF_OBJECT_ATTRIBUTES, _POOL_TYPE::NonPagedPoolNx
+    },
+    PVOID,
+    STATUS_SUCCESS,
+    WDFDEVICE,
+    WDFMEMORY,
+    WDFOBJECT,
+    WDF_NO_OBJECT_ATTRIBUTES,
+    WDF_OBJECT_ATTRIBUTES,
+    _POOL_TYPE::NonPagedPoolNx,
 };
 
 use crate::osrusbfx2::device_get_context;

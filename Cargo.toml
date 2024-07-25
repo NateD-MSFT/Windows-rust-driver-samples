@@ -1,5 +1,10 @@
 [workspace]
-members = ["general/echo/kmdf/driver/*", "general/echo/kmdf/exe", "usb/kmdf_fx2/driver", "usb/kmdf_fx2/exe"]
+members = [
+  "general/echo/kmdf/driver/*",
+  "general/echo/kmdf/exe",
+  "usb/kmdf_fx2/driver",
+  "usb/kmdf_fx2/exe",
+]
 resolver = "2"
 
 [workspace.package]
