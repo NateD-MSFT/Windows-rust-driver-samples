@@ -9,15 +9,19 @@
 #[cfg(not(test))]
 extern crate wdk_panic;
 
+mod osrusbfx2;
 mod public;
 mod trace;
 mod wdf;
-
+mod wdf_object_context;
 use alloc::format;
-use core::{borrow::BorrowMut, mem::size_of};
+use core::{borrow::BorrowMut, mem::size_of, ops::Deref};
+
+use wdf::util::wdf_device_pnp_capabilities_init;
+mod device;
 
 use lazy_static::lazy_static;
-use trace::OsrUsbFxLogger;
+use osrusbfx2::device_get_context;
 use wdk::nt_success;
 #[cfg(not(test))]
 use wdk_alloc::WDKAllocator;
@@ -41,23 +45,34 @@ use wdk_sys::{
     UNICODE_STRING,
     WDFCMRESLIST,
     WDFDEVICE,
+    WDFDEVICE__,
     WDFDRIVER,
     WDFOBJECT,
+    WDF_DEVICE_PNP_CAPABILITIES,
     WDF_NO_HANDLE,
+    WDF_OBJECT_ATTRIBUTES,
+    WDF_OBJECT_CONTEXT_TYPE_INFO,
     WDF_PNPPOWER_EVENT_CALLBACKS,
     WDF_POWER_DEVICE_STATE,
     _WDF_DEVICE_IO_TYPE,
+    _WDF_EXECUTION_LEVEL::WdfExecutionLevelInheritFromParent,
+    _WDF_OBJECT_ATTRIBUTES,
+    _WDF_SYNCHRONIZATION_SCOPE::WdfSynchronizationScopeInheritFromParent,
+    _WDF_TRI_STATE::WdfTrue,
 };
 use win_etw_provider::EventOptions;
+
+use crate::{
+    osrusbfx2::*,
+    trace::{trace_events, EVENT_LOGGER},
+    wdf_object_context::wdf_get_context_type_info,
+};
 
 extern crate alloc;
 
 #[cfg(not(test))]
 #[global_allocator]
 static GLOBAL_ALLOCATOR: WDKAllocator = WDKAllocator;
-lazy_static! {
-    static ref EVENT_LOGGER: OsrUsbFxLogger = OsrUsbFxLogger::new();
-}
 type FnIoGetActivityIdIrp = unsafe extern "C" fn(PIRP, LPGUID) -> NTSTATUS;
 lazy_static! {
     static ref IO_GET_ACTIVITY_ID_IRP: Option<FnIoGetActivityIdIrp> = unsafe {
@@ -137,10 +152,7 @@ extern "system" fn driver_entry(
     let wdf_attributes: PWDF_OBJECT_ATTRIBUTES = &mut Default::default();
     let device_add: PFN_WDF_DRIVER_DEVICE_ADD = Some(osr_fx_evt_device_add);
     wdf::util::wdf_driver_config_init(wdf_config, device_add);
-    let status = match wdf::util::wdf_object_attributes_init(wdf_attributes) {
-        Ok(_) => STATUS_SUCCESS,
-        Err(_) => todo!(),
-    };
+    wdf::util::wdf_object_attributes_init(wdf_attributes);
     unsafe {
         // Safety: This is a direct assignment to an initialized structure which
         // is not shared with any other threads or references.
@@ -174,7 +186,7 @@ extern "system" fn driver_entry(
 #[link_section = "PAGE"]
 unsafe extern "C" fn osr_fx_evt_device_add(
     driver: WDFDRIVER,
-    device_init: PWDFDEVICE_INIT,
+    mut device_init: PWDFDEVICE_INIT,
 ) -> NTSTATUS {
     EVENT_LOGGER.send_string(
         Some(&EventOptions {
@@ -212,6 +224,73 @@ unsafe extern "C" fn osr_fx_evt_device_add(
         _WDF_DEVICE_IO_TYPE::WdfDeviceIoBuffered
     );
 
+    // Now specify the size of device extension where we track per device
+    // context.DeviceInit is completely initialized. So call the framework
+    // to create the device and attach it to the lower stack.
+    //
+    let attributes = &mut WDF_OBJECT_ATTRIBUTES {
+        ContextTypeInfo: wdf_get_context_type_info!(DeviceContext),
+        Size: core::mem::size_of::<_WDF_OBJECT_ATTRIBUTES>() as u32,
+        ExecutionLevel: WdfExecutionLevelInheritFromParent,
+        SynchronizationScope: WdfSynchronizationScopeInheritFromParent,
+        ..Default::default()
+    };
+
+    let mut device: WDFDEVICE = WDFDEVICE__ {
+        ..Default::default()
+    }
+    .borrow_mut();
+
+    let status = macros::call_unsafe_wdf_function_binding!(
+        WdfDeviceCreate,
+        &mut device_init,
+        attributes,
+        &mut device
+    );
+
+    if !nt_success(status) {
+        EVENT_LOGGER.send_string(
+            Some(&EventOptions {
+                level: Some(win_etw_provider::Level::ERROR),
+                ..Default::default()
+            }),
+            format!("WdfDeviceCreate failed with Status code {status:x}\n").as_str(),
+        );
+        return status;
+    }
+
+    let activity = device_to_activity_id(&device);
+    let pDevContext = unsafe { device_get_context(device as WDFOBJECT) };
+
+    // Get the device's friendly name and location so that we can use it in
+    // error logging.  If this fails then it will setup dummy strings.
+    //
+
+    device::get_device_logging_names(device);
+
+    // Tell the framework to set the SurpriseRemovalOK in the DeviceCaps so
+    // that you don't get the popup in usermode when you surprise remove the device.
+
+    let mut caps: WDF_DEVICE_PNP_CAPABILITIES = Default::default();
+    wdf_device_pnp_capabilities_init(&mut caps);
+    caps.SurpriseRemovalOK = WdfTrue;
+
+    unsafe {
+        macros::call_unsafe_wdf_function_binding!(WdfDeviceSetPnpCapabilities, device, &mut caps);
+    }
+
+    //
+    // Create a parallel default queue and register an event callback to
+    // receive ioctl requests. We will create separate queues for
+    // handling read and write requests. All other requests will be
+    // completed with error status automatically by the framework.
+    //
+
+
+    trace_events!(
+        "<-- OsrFxEvtDeviceAdd routine\n",
+        win_etw_provider::Level::INFO
+    );
     STATUS_SUCCESS
 }
 
