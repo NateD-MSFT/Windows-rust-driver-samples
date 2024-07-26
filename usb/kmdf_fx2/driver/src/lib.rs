@@ -9,15 +9,16 @@
 #[cfg(not(test))]
 extern crate wdk_panic;
 
+mod ioctl;
 mod osrusbfx2;
 mod public;
 mod trace;
 mod wdf;
 mod wdf_object_context;
 use alloc::format;
-use core::{borrow::BorrowMut, mem::size_of, ops::Deref};
+use core::{borrow::BorrowMut, mem::size_of, ops::Deref, ptr::null_mut};
 
-use wdf::util::wdf_device_pnp_capabilities_init;
+use wdf::util::{wdf_device_pnp_capabilities_init, wdf_io_queue_config_init_default_queue};
 mod device;
 
 use lazy_static::lazy_static;
@@ -48,14 +49,19 @@ use wdk_sys::{
     WDFDEVICE__,
     WDFDRIVER,
     WDFOBJECT,
+    WDFQUEUE,
+    WDFQUEUE__,
     WDF_DEVICE_PNP_CAPABILITIES,
+    WDF_IO_QUEUE_CONFIG,
     WDF_NO_HANDLE,
+    WDF_NO_OBJECT_ATTRIBUTES,
     WDF_OBJECT_ATTRIBUTES,
     WDF_OBJECT_CONTEXT_TYPE_INFO,
     WDF_PNPPOWER_EVENT_CALLBACKS,
     WDF_POWER_DEVICE_STATE,
     _WDF_DEVICE_IO_TYPE,
     _WDF_EXECUTION_LEVEL::WdfExecutionLevelInheritFromParent,
+    _WDF_IO_QUEUE_DISPATCH_TYPE::WdfIoQueueDispatchParallel,
     _WDF_OBJECT_ATTRIBUTES,
     _WDF_SYNCHRONIZATION_SCOPE::WdfSynchronizationScopeInheritFromParent,
     _WDF_TRI_STATE::WdfTrue,
@@ -283,7 +289,21 @@ unsafe extern "C" fn osr_fx_evt_device_add(
     // receive ioctl requests. We will create separate queues for
     // handling read and write requests. All other requests will be
     // completed with error status automatically by the framework.
-    //
+
+    let mut io_queue_config: WDF_IO_QUEUE_CONFIG = Default::default();
+    wdf_io_queue_config_init_default_queue(&mut io_queue_config, WdfIoQueueDispatchParallel);
+
+    io_queue_config.EvtIoDeviceControl = Some(crate::ioctl::osr_fx_evt_io_device_control);
+    let mut queue: WDFQUEUE = null_mut();
+    unsafe {
+        macros::call_unsafe_wdf_function_binding!(
+            WdfIoQueueCreate,
+            device,
+            &mut io_queue_config,
+            WDF_NO_OBJECT_ATTRIBUTES,
+            &mut queue //TODO: Using null_mut here feels off.
+        );
+    }
 
     trace_events!(
         "<-- OsrFxEvtDeviceAdd routine\n",
