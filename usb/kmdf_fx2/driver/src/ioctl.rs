@@ -8,3 +8,12 @@ pub unsafe extern "C" fn osr_fx_evt_io_device_control(
     io_control_code: ULONG,
 ) {
 }
+
+pub unsafe extern "C" fn osr_fx_evt_io_read(queue: WDFQUEUE, request: WDFREQUEST, length: usize) {}
+
+pub unsafe extern "C" fn osr_fx_evt_io_stop(
+    queue: WDFQUEUE,
+    request: WDFREQUEST,
+    action_flags: ULONG,
+) {
+}

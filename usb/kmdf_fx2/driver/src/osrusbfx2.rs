@@ -1,5 +1,4 @@
 #![feature(const_option_ext)]
-use core::borrow::BorrowMut;
 
 use wdk_sys::*;
 

@@ -16,7 +16,7 @@ pub mod util {
         WDF_IO_QUEUE_DISPATCH_TYPE,
         WDF_OBJECT_ATTRIBUTES,
         _WDF_EXECUTION_LEVEL::WdfExecutionLevelInheritFromParent,
-        _WDF_IO_QUEUE_DISPATCH_TYPE::{self, WdfIoQueueDispatchParallel},
+        _WDF_IO_QUEUE_DISPATCH_TYPE::WdfIoQueueDispatchParallel,
         _WDF_SYNCHRONIZATION_SCOPE::WdfSynchronizationScopeInheritFromParent,
         _WDF_TRI_STATE::WdfUseDefault,
     };
@@ -82,7 +82,7 @@ pub mod util {
             (*caps).UINumber = ULONG::MAX;
         }
     }
-    
+
     pub fn wdf_io_queue_config_init_default_queue(
         config: PWDF_IO_QUEUE_CONFIG,
         dispatch_type: WDF_IO_QUEUE_DISPATCH_TYPE,
