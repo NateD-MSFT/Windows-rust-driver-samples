@@ -4,17 +4,9 @@ pub mod util {
     use core::mem;
 
     use wdk_sys::{
-        PFN_WDF_DRIVER_DEVICE_ADD,
-        PWDF_DEVICE_PNP_CAPABILITIES,
-        PWDF_DRIVER_CONFIG,
-        PWDF_IO_QUEUE_CONFIG,
-        PWDF_OBJECT_ATTRIBUTES,
-        ULONG,
-        WDF_DEVICE_PNP_CAPABILITIES,
-        WDF_DRIVER_CONFIG,
-        WDF_IO_QUEUE_CONFIG,
-        WDF_IO_QUEUE_DISPATCH_TYPE,
-        WDF_OBJECT_ATTRIBUTES,
+        PFN_WDF_DRIVER_DEVICE_ADD, PWDF_DEVICE_PNP_CAPABILITIES, PWDF_DRIVER_CONFIG,
+        PWDF_IO_QUEUE_CONFIG, PWDF_OBJECT_ATTRIBUTES, ULONG, WDF_DEVICE_PNP_CAPABILITIES,
+        WDF_DRIVER_CONFIG, WDF_IO_QUEUE_CONFIG, WDF_IO_QUEUE_DISPATCH_TYPE, WDF_OBJECT_ATTRIBUTES,
         _WDF_EXECUTION_LEVEL::WdfExecutionLevelInheritFromParent,
         _WDF_IO_QUEUE_DISPATCH_TYPE::WdfIoQueueDispatchParallel,
         _WDF_SYNCHRONIZATION_SCOPE::WdfSynchronizationScopeInheritFromParent,
@@ -94,6 +86,23 @@ pub mod util {
             (*config).Size = wdf_structure_size::<WDF_IO_QUEUE_CONFIG>();
             (*config).PowerManaged = WdfUseDefault;
             (*config).DefaultQueue = true as u8;
+            (*config).DispatchType = dispatch_type;
+            if (*config).DispatchType == WdfIoQueueDispatchParallel {
+                (*config).Settings.Parallel.NumberOfPresentedRequests = ULONG::MAX;
+            }
+        }
+    }
+
+    pub fn wdf_io_queue_config_init(
+        config: PWDF_IO_QUEUE_CONFIG,
+        dispatch_type: WDF_IO_QUEUE_DISPATCH_TYPE,
+    ) {
+        // SAFETY: We are setting defaults for a struct we have an exclusive reference
+        // to.
+        unsafe {
+            *config = mem::zeroed::<WDF_IO_QUEUE_CONFIG>();
+            (*config).Size = wdf_structure_size::<WDF_IO_QUEUE_CONFIG>();
+            (*config).PowerManaged = WdfUseDefault;
             (*config).DispatchType = dispatch_type;
             if (*config).DispatchType == WdfIoQueueDispatchParallel {
                 (*config).Settings.Parallel.NumberOfPresentedRequests = ULONG::MAX;

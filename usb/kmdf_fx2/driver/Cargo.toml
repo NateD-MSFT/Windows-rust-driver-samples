@@ -28,6 +28,10 @@ lazy_static = { version = "*", default-features = false, features = [
   "spin_no_std",
 ] }
 
+[dependencies.windows-sys]
+version = "0.59"
+features = ["Win32_Devices_Properties"]
+
 [build-dependencies]
 wdk-build.workspace = true
 

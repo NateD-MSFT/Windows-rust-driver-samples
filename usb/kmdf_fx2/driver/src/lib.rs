@@ -17,7 +17,9 @@ mod wdf;
 mod wdf_object_context;
 use alloc::format;
 use core::{borrow::BorrowMut, mem::size_of};
+use windows_sys::Win32::Devices::Properties::{DEVPROPKEY, DEVPROPTYPE};
 
+mod bulkrwr;
 mod device;
 
 use lazy_static::lazy_static;
@@ -27,21 +29,9 @@ use wdk_alloc::WDKAllocator;
 use wdk_sys::{
     macros,
     ntddk::{MmGetSystemRoutineAddress, RtlInitUnicodeString},
-    BOOLEAN,
-    DRIVER_OBJECT,
-    LPGUID,
-    NTSTATUS,
-    PCUNICODE_STRING,
-    PDRIVER_OBJECT,
-    PFN_WDF_DRIVER_DEVICE_ADD,
-    PIRP,
-    PUNICODE_STRING,
-    PVOID,
-    PWDF_DRIVER_CONFIG,
-    PWDF_OBJECT_ATTRIBUTES,
-    UNICODE_STRING,
-    WDFDRIVER,
-    WDF_NO_HANDLE,
+    BOOLEAN, DRIVER_OBJECT, LPGUID, NTSTATUS, PCUNICODE_STRING, PDRIVER_OBJECT,
+    PFN_WDF_DRIVER_DEVICE_ADD, PIRP, PUNICODE_STRING, PVOID, PWDF_DRIVER_CONFIG,
+    PWDF_OBJECT_ATTRIBUTES, ULONG, UNICODE_STRING, WDFDRIVER, WDF_NO_HANDLE,
 };
 use win_etw_provider::EventOptions;
 
@@ -59,8 +49,15 @@ lazy_static! {
         get_system_routine_address_from_str::<FnIoGetActivityIdIrp>("IoGetActivityIdIrp")
     };
 }
-type FnIoSetDeviceInterfacePropertyData =
-    unsafe extern "C" fn(PUNICODE_STRING, BOOLEAN) -> NTSTATUS;
+type FnIoSetDeviceInterfacePropertyData = unsafe extern "C" fn(
+    PUNICODE_STRING,
+    *const DEVPROPKEY,
+    ULONG,
+    ULONG,
+    DEVPROPTYPE,
+    ULONG,
+    PVOID,
+) -> NTSTATUS;
 lazy_static! {
     static ref IO_SET_DEVICE_INTERFACE_PROPERTY_DATA: Option<FnIoSetDeviceInterfacePropertyData> = unsafe {
         // Safety: IoSetDeviceInterfacePropertyData has the appropriate signature.
