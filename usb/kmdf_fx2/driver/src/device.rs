@@ -135,6 +135,8 @@ pub unsafe extern "C" fn osr_fx_evt_device_add(
     mut device_init: PWDFDEVICE_INIT,
 ) -> NTSTATUS {
 
+    wdk::dbg_break();
+
     EVENT_LOGGER.send_string(
         Some(&EventOptions {
             level: Some(win_etw_provider::Level::INFO),
@@ -245,13 +247,13 @@ pub unsafe extern "C" fn osr_fx_evt_device_add(
 
     if !nt_success(status) {
         trace_events!(
-            format!("WdfDeviceCreate failed with Status code {status:x}\n").as_str(),
+            format!("WdfIoQueueCreate failed with Status code {status:x}\n").as_str(),
             win_etw_provider::Level::ERROR
         );
         return status;
     }
 
-    wdf_io_queue_config_init_default_queue(&mut io_queue_config, WdfIoQueueDispatchSequential);
+    wdf_io_queue_config_init(&mut io_queue_config, WdfIoQueueDispatchSequential);
     io_queue_config.EvtIoRead = Some(osr_fx_evt_io_read);
     io_queue_config.EvtIoStop = Some(osr_fx_evt_io_stop);
     let mut sequential_queue: WDFQUEUE = null_mut();
