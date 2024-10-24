@@ -1,9 +1,10 @@
 [package]
-name = "echo-2"
+name = "fail_driver_pool_leak"
 version = "0.1.0"
 edition.workspace = true
-license.workspace = true
 publish.workspace = true
+repository.workspace = true
+license.workspace = true
 
 [package.metadata.wdk]
 # Using workspace wdk config
@@ -14,7 +15,6 @@ crate-type = ["cdylib"]
 test = false
 
 [dependencies]
-paste.workspace = true
 wdk.workspace = true
 wdk-alloc.workspace = true
 wdk-panic.workspace = true
