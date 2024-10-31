@@ -7,6 +7,6 @@ This folder contains a Rust static library that builds using the WDK and refers 
 Manual builds can be performed by carrying out the following steps from a Windows Driver Kit environment:
 
 1. Run cargo build from the root of the repo or from the "library" subfolder.
-2. Run "msbuild /p:Configuration=Release /p:Platform=x64" from the "driver" subfolder.  The driver has been configured to point to the .lib file and .h file generated in step 1.
+2. Run "msbuild /p:Configuration=Debug /p:Platform=x64" from the "driver" subfolder.  The driver has been configured to point to the .lib file and .h file generated in step 1.
 
 A cleaner build script is under development.
